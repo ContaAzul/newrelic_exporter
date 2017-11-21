@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	version = "0.0.1"
+	version = "dev"
 	addr    = kingpin.Flag("addr", "Address to bind the server").Default(":9112").OverrideDefaultFromEnvar("SERVER_ADDR").String()
 	apiKey  = kingpin.Flag("api-key", "New Relic API key").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
 )
