@@ -41,6 +41,6 @@ func main() {
 
 	log.Infof("Server listening on %s", *addr)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
-		log.Fatalf("Rrror starting server: %s", err)
+		log.Fatalf("Error starting server: %s", err)
 	}
 }
