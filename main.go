@@ -11,7 +11,7 @@ import (
 var (
 	version = "0.0.1"
 	addr    = kingpin.Flag("addr", "Address to bind the server").Default(":9112").OverrideDefaultFromEnvar("SERVER_ADDR").String()
-	apiKey  = kingpin.Flag("api-key", "New Relic API key").Default("").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
+	apiKey  = kingpin.Flag("api-key", "New Relic API key").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
 )
 
 func main() {
@@ -21,7 +21,6 @@ func main() {
 
 	log.Info("Starting newrelic_exporter ", version)
 
-	log.Info(*apiKey)
 	if *apiKey == "" {
 		log.Fatal("You must provide your New Relic API key")
 	}
@@ -30,9 +29,9 @@ func main() {
 		fmt.Fprintf(w,
 			`
 			<html>
-			<head><title>New Relic Exporter</title></head>
+			<head><title>NewRelic Exporter</title></head>
 			<body>
-				<h1>New Relic Exporter</h1>
+				<h1>NewRelic Exporter</h1>
 				<p><a href="/metrics">Metrics</a></p>
 			</body>
 			</html>
