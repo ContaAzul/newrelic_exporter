@@ -9,5 +9,5 @@ checksum:
 archive:
   name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}'
 dockers:
-- image: caninjas/newrelic_exporter
-  latest: true
+  - image: caninjas/newrelic_exporter
+    latest: true
