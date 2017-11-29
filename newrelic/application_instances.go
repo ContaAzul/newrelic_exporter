@@ -35,7 +35,7 @@ func (c *Client) ListInstances(applicationID int) ([]ApplicationInstance, error)
 		return nil, err
 	}
 
-	appInstances := &listInstancesResponse{}
-	_, err = c.do(req, appInstances)
-	return appInstances.Instances, err
+	var response listInstancesResponse
+	_, err = c.do(req, response)
+	return response.Instances, err
 }
