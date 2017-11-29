@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/prometheus/common/log"
 )
 
 const defaultBaseURL = "https://api.newrelic.com/"
@@ -47,12 +49,7 @@ func (c *Client) newRequest(method, path string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(method, url.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, err
+	return http.NewRequest(method, url.String(), nil)
 }
 
 func (c *Client) do(req *http.Request, result interface{}) (*http.Response, error) {
@@ -60,14 +57,13 @@ func (c *Client) do(req *http.Request, result interface{}) (*http.Response, erro
 	if err != nil {
 		return nil, err
 	}
-	defer closeResponse(resp)
 
-	err = json.NewDecoder(resp.Body).Decode(result)
-	return resp, err
-}
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Warn("An error occured closing response body: ", err)
+		}
+	}()
 
-func closeResponse(resp *http.Response) {
-	if resp != nil {
-		resp.Body.Close()
-	}
+	return resp, json.NewDecoder(resp.Body).Decode(result)
 }
