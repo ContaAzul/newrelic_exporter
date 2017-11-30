@@ -47,8 +47,8 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	//TODO: Use correct application ID to scrape data
 	_, err := c.client.ListInstances(0)
 	if err != nil {
-		log.Errorf("Failed to get application instances: %v", err)
 		ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
+		log.Errorf("Failed to get application instances: %v", err)
 		return
 	}
 
