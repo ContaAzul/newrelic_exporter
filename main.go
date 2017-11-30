@@ -6,6 +6,7 @@ import (
 
 	"github.com/ContaAzul/newrelic_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -29,7 +30,7 @@ func main() {
 
 	prometheus.MustRegister(exporter.NewExporter(*apiKey))
 
-	http.Handle("/metrics", prometheus.Handler())
+	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w,
 			`
@@ -45,6 +46,6 @@ func main() {
 
 	log.Infof("Server listening on %s", *addr)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
-		log.Fatalf("Error starting server: %s", err)
+		log.Fatalf("Error starting server: %v", err)
 	}
 }
