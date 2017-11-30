@@ -2,6 +2,7 @@ package collector
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ContaAzul/newrelic_exporter/newrelic"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,7 +15,8 @@ type newRelicCollector struct {
 	mutex  sync.RWMutex
 	client *newrelic.Client
 
-	up *prometheus.Desc
+	up             *prometheus.Desc
+	scrapeDuration *prometheus.Desc
 }
 
 // NewNewRelicCollector returns a prometheus collector which exports
@@ -25,6 +27,12 @@ func NewNewRelicCollector(apiKey string) prometheus.Collector {
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"NewRelic API is up and accepting requests",
+			nil,
+			nil,
+		),
+		scrapeDuration: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "scrape_duration_seconds"),
+			"Time NewRelic scrape took in seconds",
 			nil,
 			nil,
 		),
@@ -44,6 +52,7 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	start := time.Now()
 	//TODO: Use correct application ID to scrape data
 	_, err := c.client.ListInstances(0)
 	if err != nil {
@@ -53,4 +62,8 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
+	ch <- prometheus.MustNewConstMetric(
+		c.scrapeDuration,
+		prometheus.GaugeValue,
+		float64(time.Since(start).Seconds()))
 }
