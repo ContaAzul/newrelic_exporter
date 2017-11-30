@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ContaAzul/newrelic_exporter/exporter"
+	"github.com/ContaAzul/newrelic_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -28,7 +28,7 @@ func main() {
 		log.Fatal("You must provide your New Relic API key")
 	}
 
-	prometheus.MustRegister(exporter.NewExporter(*apiKey))
+	prometheus.MustRegister(collector.NewNewRelicCollector(*apiKey))
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
