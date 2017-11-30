@@ -17,15 +17,15 @@ type application struct {
 	Name string `yaml:"name,omitempty"`
 }
 
-// Parse reads and parse a given file to a new Config
+// Parse reads and parse a given configuration file to a new Config
 func Parse(path string) Config {
 	var config Config
 
-	file, err := ioutil.ReadFile(path)
+	bts, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.With("path", path).Fatalf("Failed to read configuration file: %v", err)
 	}
-	if err := yaml.Unmarshal(file, &config); err != nil {
+	if err := yaml.Unmarshal(bts, &config); err != nil {
 		log.With("path", path).Fatalf("Failed to unmarshall configuration file: %v", err)
 	}
 
