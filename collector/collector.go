@@ -63,8 +63,5 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
-	ch <- prometheus.MustNewConstMetric(
-		c.scrapeDuration,
-		prometheus.GaugeValue,
-		float64(time.Since(start).Seconds()))
+	ch <- prometheus.MustNewConstMetric(c.scrapeDuration, prometheus.GaugeValue, time.Since(start).Seconds())
 }
