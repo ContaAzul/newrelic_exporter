@@ -1,0 +1,13 @@
+project_name: newrelic_exporter
+builds:
+  goarch:
+    - amd64
+  env:
+    - CGO_ENABLED=0
+checksum:
+  name_template: '{{ .ProjectName }}_checksums.txt'
+archive:
+  name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}'
+dockers:
+  - image: caninjas/newrelic_exporter
+    latest: true
