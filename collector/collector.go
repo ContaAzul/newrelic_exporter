@@ -43,6 +43,7 @@ func NewNewRelicCollector(apiKey string) prometheus.Collector {
 // It implements prometheus.Collector.
 func (c *newRelicCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.up
+	ch <- c.scrapeDuration
 }
 
 // Collect fetches the metrics data from the NewRelic application and
