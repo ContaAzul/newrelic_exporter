@@ -7,7 +7,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// Config represents the exporter's configuration
+// Config represents the exporter configuration
 type Config struct {
 	Applications []application `yaml:"applications,omitempty"`
 }
