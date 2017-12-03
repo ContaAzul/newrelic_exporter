@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ContaAzul/newrelic_exporter/config"
 	"github.com/ContaAzul/newrelic_exporter/newrelic"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -13,6 +14,7 @@ const namespace = "newrelic"
 
 type newRelicCollector struct {
 	mutex  sync.RWMutex
+	config config.Config
 	client *newrelic.Client
 
 	up             *prometheus.Desc
@@ -21,8 +23,9 @@ type newRelicCollector struct {
 
 // NewNewRelicCollector returns a prometheus collector which exports
 // metrics from a NewRelic application.
-func NewNewRelicCollector(apiKey string) prometheus.Collector {
+func NewNewRelicCollector(apiKey string, config config.Config) prometheus.Collector {
 	return &newRelicCollector{
+		config: config,
 		client: newrelic.NewClient(apiKey),
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
@@ -54,12 +57,14 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	defer c.mutex.Unlock()
 
 	start := time.Now()
-	//TODO: Use correct application ID to scrape data
-	_, err := c.client.ListInstances(0)
-	if err != nil {
-		ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
-		log.Errorf("Failed to get application instances: %v", err)
-		return
+	for _, app := range c.config.Applications {
+		log.Infof("Collecting metrics from application: %s", app.Name)
+		_, err := c.client.ListInstances(app.ID)
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
+			log.Errorf("Failed to get application instances: %v", err)
+			return
+		}
 	}
 
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ContaAzul/newrelic_exporter/collector"
+	"github.com/ContaAzul/newrelic_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -12,9 +13,10 @@ import (
 )
 
 var (
-	version = "dev"
-	addr    = kingpin.Flag("addr", "Address to bind the server").Default(":9112").OverrideDefaultFromEnvar("SERVER_ADDR").String()
-	apiKey  = kingpin.Flag("api-key", "New Relic API key").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
+	version    = "dev"
+	addr       = kingpin.Flag("addr", "Address to bind the server").Default(":9112").OverrideDefaultFromEnvar("SERVER_ADDR").String()
+	apiKey     = kingpin.Flag("api-key", "New Relic API key").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
+	configFile = kingpin.Flag("config", "Configuration file path").Default("config.yml").OverrideDefaultFromEnvar("CONFIG_FILEPATH").String()
 )
 
 func main() {
@@ -28,7 +30,8 @@ func main() {
 		log.Fatal("You must provide your New Relic API key")
 	}
 
-	prometheus.MustRegister(collector.NewNewRelicCollector(*apiKey))
+	var config = config.Parse(*configFile)
+	prometheus.MustRegister(collector.NewNewRelicCollector(*apiKey, config))
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

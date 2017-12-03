@@ -28,7 +28,7 @@ type listInstancesResponse struct {
 
 // ListInstances returns a paginated list of instances associated with the given application.
 // The time range for summary data is the last 3-4 minutes.
-func (c *Client) ListInstances(applicationID int) ([]ApplicationInstance, error) {
+func (c *Client) ListInstances(applicationID int64) ([]ApplicationInstance, error) {
 	path := fmt.Sprintf("v2/applications/%d/instances.json", applicationID)
 	req, err := c.newRequest("GET", path)
 	if err != nil {
