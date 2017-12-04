@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -17,8 +18,12 @@ type newRelicCollector struct {
 	config config.Config
 	client *newrelic.Client
 
-	up             *prometheus.Desc
-	scrapeDuration *prometheus.Desc
+	up                          *prometheus.Desc
+	scrapeDuration              *prometheus.Desc
+	instanceSummaryApdexScore   *prometheus.Desc
+	instanceSummaryErrorRate    *prometheus.Desc
+	instanceSummaryResponseTime *prometheus.Desc
+	instanceSummaryThroughput   *prometheus.Desc
 }
 
 // NewNewRelicCollector returns a prometheus collector which exports
@@ -39,7 +44,20 @@ func NewNewRelicCollector(apiKey string, config config.Config) prometheus.Collec
 			nil,
 			nil,
 		),
+		instanceSummaryApdexScore:   newInstanceSummaryDesc("apdex_score"),
+		instanceSummaryErrorRate:    newInstanceSummaryDesc("error_rate"),
+		instanceSummaryResponseTime: newInstanceSummaryDesc("response_time"),
+		instanceSummaryThroughput:   newInstanceSummaryDesc("throughput"),
 	}
+}
+
+func newInstanceSummaryDesc(name string) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "instance_summary", name),
+		"Instance rolling three-to-four-minute average for "+strings.Replace(name, "_", " ", -1),
+		[]string{"app", "instance"},
+		nil,
+	)
 }
 
 // Describe describes all the metrics exported by the NewRelic exporter.
@@ -47,6 +65,10 @@ func NewNewRelicCollector(apiKey string, config config.Config) prometheus.Collec
 func (c *newRelicCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.up
 	ch <- c.scrapeDuration
+	ch <- c.instanceSummaryApdexScore
+	ch <- c.instanceSummaryErrorRate
+	ch <- c.instanceSummaryResponseTime
+	ch <- c.instanceSummaryThroughput
 }
 
 // Collect fetches the metrics data from the NewRelic application and
@@ -59,14 +81,31 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	start := time.Now()
 	for _, app := range c.config.Applications {
 		log.Infof("Collecting metrics from application: %s", app.Name)
-		_, err := c.client.ListInstances(app.ID)
+		instances, err := c.client.ListInstances(app.ID)
 		if err != nil {
 			ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
 			log.Errorf("Failed to get application instances: %v", err)
 			return
 		}
+
+		c.collectInstanceSummary(ch, app.Name, instances)
 	}
 
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
 	ch <- prometheus.MustNewConstMetric(c.scrapeDuration, prometheus.GaugeValue, time.Since(start).Seconds())
+}
+
+func (c *newRelicCollector) collectInstanceSummary(ch chan<- prometheus.Metric,
+	appName string, instances []newrelic.ApplicationInstance) {
+	for _, instance := range instances {
+		if instance.ApplicationSummary.InstanceCount > 0 {
+			summary := instance.ApplicationSummary
+			ch <- prometheus.MustNewConstMetric(c.instanceSummaryApdexScore, prometheus.GaugeValue, summary.ApdexScore, appName, instance.Host)
+			ch <- prometheus.MustNewConstMetric(c.instanceSummaryErrorRate, prometheus.GaugeValue, summary.ErrorRate, appName, instance.Host)
+			ch <- prometheus.MustNewConstMetric(c.instanceSummaryResponseTime, prometheus.GaugeValue, summary.ResponseTime, appName, instance.Host)
+			ch <- prometheus.MustNewConstMetric(c.instanceSummaryThroughput, prometheus.GaugeValue, summary.Throughput, appName, instance.Host)
+		} else {
+			log.Warnf("Ignoring instance %s because its InstanceCount is 0.", instance.Host)
+		}
+	}
 }
