@@ -88,14 +88,14 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		c.collectInstanceSummaryMetrics(ch, app.Name, instances)
+		c.collectInstanceSummary(ch, app.Name, instances)
 	}
 
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
 	ch <- prometheus.MustNewConstMetric(c.scrapeDuration, prometheus.GaugeValue, time.Since(start).Seconds())
 }
 
-func (c *newRelicCollector) collectInstanceSummaryMetrics(ch chan<- prometheus.Metric,
+func (c *newRelicCollector) collectInstanceSummary(ch chan<- prometheus.Metric,
 	appName string, instances []newrelic.ApplicationInstance) {
 	for _, instance := range instances {
 		if instance.ApplicationSummary.InstanceCount > 0 {
