@@ -3,3 +3,11 @@ applications:
     name: My Application
   - id: 31595724
     name: Another
+  - id: 49385703
+    name: Absolute
+  - id: 49138657
+    name: Cnpj
+  - id: 49400819
+    name: Dike
+  - id: 50120201
+    name: Fanout
