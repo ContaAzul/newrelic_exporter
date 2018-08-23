@@ -103,13 +103,17 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(c.config.Applications))
 
 	start := time.Now()
+
+	// TODO: We need to find a new way to check if NewRelic API is up before running,
+	// all goroutines below. Maybe consuming the simplest API endpoint
+	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
+
 	for _, app := range c.config.Applications {
 		go func(app config.Application) {
 			defer wg.Done()
 			log.Infof("Collecting metrics from application: %s", app.Name)
 			application, err := c.client.ShowApplication(app.ID)
 			if err != nil {
-				ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
 				log.Errorf("Failed to get application: %v", err)
 				return
 			}
@@ -117,7 +121,6 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 
 			instances, err := c.client.ListInstances(app.ID)
 			if err != nil {
-				ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
 				log.Errorf("Failed to get application instances: %v", err)
 				return
 			}
@@ -126,7 +129,6 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	wg.Wait()
-	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
 	ch <- prometheus.MustNewConstMetric(c.scrapeDuration, prometheus.GaugeValue, time.Since(start).Seconds())
 }
 
