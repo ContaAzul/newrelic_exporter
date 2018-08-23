@@ -9,10 +9,11 @@ import (
 
 // Config represents the exporter configuration
 type Config struct {
-	Applications []application `yaml:"applications,omitempty"`
+	Applications []Application `yaml:"applications,omitempty"`
 }
 
-type application struct {
+// Application represents a NewRelic application scrape configuration
+type Application struct {
 	ID   int64  `yaml:"id,omitempty"`
 	Name string `yaml:"name,omitempty"`
 }
