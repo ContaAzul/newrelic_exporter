@@ -99,26 +99,33 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	var wg sync.WaitGroup
+	wg.Add(len(c.config.Applications))
+
 	start := time.Now()
 	for _, app := range c.config.Applications {
-		log.Infof("Collecting metrics from application: %s", app.Name)
-		application, err := c.client.ShowApplication(app.ID)
-		if err != nil {
-			ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
-			log.Errorf("Failed to get application: %v", err)
-			return
-		}
-		c.collectApplicationSummary(ch, app.Name, application)
+		go func(app config.Application) {
+			defer wg.Done()
+			log.Infof("Collecting metrics from application: %s", app.Name)
+			application, err := c.client.ShowApplication(app.ID)
+			if err != nil {
+				ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
+				log.Errorf("Failed to get application: %v", err)
+				return
+			}
+			c.collectApplicationSummary(ch, app.Name, application)
 
-		instances, err := c.client.ListInstances(app.ID)
-		if err != nil {
-			ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
-			log.Errorf("Failed to get application instances: %v", err)
-			return
-		}
-		c.collectInstanceSummary(ch, app.Name, instances)
+			instances, err := c.client.ListInstances(app.ID)
+			if err != nil {
+				ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 0)
+				log.Errorf("Failed to get application instances: %v", err)
+				return
+			}
+			c.collectInstanceSummary(ch, app.Name, instances)
+		}(app)
 	}
 
+	wg.Wait()
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
 	ch <- prometheus.MustNewConstMetric(c.scrapeDuration, prometheus.GaugeValue, time.Since(start).Seconds())
 }
