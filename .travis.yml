@@ -1,12 +1,13 @@
+dist: trusty
 sudo: required
 language: go
-go: 1.9
+go: "1.10"
 services:
   - docker
 install: make setup
 script: make ci
 after_success:
-  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
   - bash <(curl -s https://codecov.io/bash)
 notifications:
   email: false
