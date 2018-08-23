@@ -17,7 +17,7 @@ endif
 
 # Install dependencies
 install:
-	dep ensure -v
+	dep ensure -v -vendor-only
 .PHONY: install
 
 # Run app
