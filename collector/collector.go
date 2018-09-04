@@ -28,6 +28,11 @@ type newRelicCollector struct {
 	instanceSummaryErrorRate    *prometheus.Desc
 	instanceSummaryResponseTime *prometheus.Desc
 	instanceSummaryThroughput   *prometheus.Desc
+	keyTransactionApdexScore    *prometheus.Desc
+	keyTransactionApdexTarget   *prometheus.Desc
+	keyTransactionErrorRate     *prometheus.Desc
+	keyTransactionResponseTime  *prometheus.Desc
+	keyTransactionThroughput    *prometheus.Desc
 }
 
 // NewNewRelicCollector returns a prometheus collector which exports
@@ -56,6 +61,11 @@ func NewNewRelicCollector(apiKey string, config config.Config) prometheus.Collec
 		instanceSummaryErrorRate:    newInstanceSummaryDesc("error_rate"),
 		instanceSummaryResponseTime: newInstanceSummaryDesc("response_time"),
 		instanceSummaryThroughput:   newInstanceSummaryDesc("throughput"),
+		keyTransactionApdexScore:    newKeyTransactionDesc("apdex_score"),
+		keyTransactionApdexTarget:   newKeyTransactionDesc("apdex_target"),
+		keyTransactionErrorRate:     newKeyTransactionDesc("error_rate"),
+		keyTransactionResponseTime:  newKeyTransactionDesc("response_time"),
+		keyTransactionThroughput:    newKeyTransactionDesc("throughput"),
 	}
 }
 
@@ -77,6 +87,15 @@ func newInstanceSummaryDesc(name string) *prometheus.Desc {
 	)
 }
 
+func newKeyTransactionDesc(name string) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "key_transaction", name),
+		"Key transaction last 10 minutes average for "+strings.Replace(name, "_", " ", -1),
+		[]string{"transaction"},
+		nil,
+	)
+}
+
 // Describe describes all the metrics exported by the NewRelic exporter.
 // It implements prometheus.Collector.
 func (c *newRelicCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -90,6 +109,11 @@ func (c *newRelicCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.instanceSummaryErrorRate
 	ch <- c.instanceSummaryResponseTime
 	ch <- c.instanceSummaryThroughput
+	ch <- c.keyTransactionApdexScore
+	ch <- c.keyTransactionApdexTarget
+	ch <- c.keyTransactionErrorRate
+	ch <- c.keyTransactionResponseTime
+	ch <- c.keyTransactionThroughput
 }
 
 // Collect fetches the metrics data from the NewRelic application and
@@ -107,6 +131,8 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	// TODO: We need to find a new way to check if NewRelic API is up before running,
 	// all goroutines below. Maybe consuming the simplest API endpoint
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
+
+	c.collectKeyTransactions(ch)
 
 	for _, app := range c.config.Applications {
 		go func(app config.Application) {
@@ -156,6 +182,33 @@ func (c *newRelicCollector) collectInstanceSummary(ch chan<- prometheus.Metric,
 			ch <- prometheus.MustNewConstMetric(c.instanceSummaryThroughput, prometheus.GaugeValue, summary.Throughput, appName, instance.Host)
 		} else {
 			log.Warnf("Ignoring application instance %s because its InstanceCount is 0.", instance.Host)
+		}
+	}
+}
+
+func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric) {
+	log.Infof("Collecting metrics from key transactions")
+	keyTransactions, err := c.client.ListKeyTransactions()
+	if err != nil {
+		log.Errorf("Failed to get key transactions: %v", err)
+		return
+	}
+
+	for _, transaction := range keyTransactions {
+		if transaction.Reporting {
+			summary := transaction.ApplicationSummary
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionApdexScore,
+				prometheus.GaugeValue, summary.ApdexScore, transaction.TransactionName)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionApdexTarget,
+				prometheus.GaugeValue, summary.ApdexTarget, transaction.TransactionName)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionErrorRate,
+				prometheus.GaugeValue, summary.ErrorRate, transaction.TransactionName)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionResponseTime,
+				prometheus.GaugeValue, summary.ResponseTime, transaction.TransactionName)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionThroughput,
+				prometheus.GaugeValue, summary.Throughput, transaction.TransactionName)
+		} else {
+			log.Warnf("Ignoring key transaction '%s' because it is not reporting.", transaction.TransactionName)
 		}
 	}
 }
