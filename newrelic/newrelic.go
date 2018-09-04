@@ -9,8 +9,6 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const defaultBaseURL = "https://api.newrelic.com/"
-
 type transport struct {
 	transport http.RoundTripper
 	apiKey    string
@@ -29,8 +27,8 @@ type Client struct {
 }
 
 // NewClient returns an initialized NewRelic API client
-func NewClient(apiKey string) *Client {
-	baseURL, _ := url.Parse(defaultBaseURL)
+func NewClient(apiURL, apiKey string) *Client {
+	baseURL, _ := url.Parse(apiURL)
 	return &Client{
 		baseURL: baseURL,
 		client: &http.Client{

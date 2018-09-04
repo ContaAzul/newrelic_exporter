@@ -37,10 +37,10 @@ type newRelicCollector struct {
 
 // NewNewRelicCollector returns a prometheus collector which exports
 // metrics from a NewRelic application.
-func NewNewRelicCollector(apiKey string, config config.Config) prometheus.Collector {
+func NewNewRelicCollector(apiURL, apiKey string, config config.Config) prometheus.Collector {
 	return &newRelicCollector{
 		config: config,
-		client: newrelic.NewClient(apiKey),
+		client: newrelic.NewClient(apiURL, apiKey),
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"NewRelic API is up and accepting requests",

@@ -12,6 +12,8 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+const defaultBaseURL = "https://api.newrelic.com/"
+
 var (
 	version    = "dev"
 	addr       = kingpin.Flag("addr", "Address to bind the server").Default(":9112").OverrideDefaultFromEnvar("SERVER_ADDR").String()
@@ -31,7 +33,7 @@ func main() {
 	}
 
 	var config = config.Parse(*configFile)
-	prometheus.MustRegister(collector.NewNewRelicCollector(*apiKey, config))
+	prometheus.MustRegister(collector.NewNewRelicCollector(defaultBaseURL, *apiKey, config))
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
