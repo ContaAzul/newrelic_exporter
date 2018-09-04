@@ -200,18 +200,13 @@ func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric, 
 	for _, transaction := range keyTransactions {
 		if transaction.Reporting {
 			summary := transaction.ApplicationSummary
-			ch <- prometheus.MustNewConstMetric(c.keyTransactionApdexScore,
-				prometheus.GaugeValue, summary.ApdexScore, transaction.TransactionName)
-			ch <- prometheus.MustNewConstMetric(c.keyTransactionApdexTarget,
-				prometheus.GaugeValue, summary.ApdexTarget, transaction.TransactionName)
-			ch <- prometheus.MustNewConstMetric(c.keyTransactionErrorRate,
-				prometheus.GaugeValue, summary.ErrorRate, transaction.TransactionName)
-			ch <- prometheus.MustNewConstMetric(c.keyTransactionResponseTime,
-				prometheus.GaugeValue, summary.ResponseTime, transaction.TransactionName)
-			ch <- prometheus.MustNewConstMetric(c.keyTransactionThroughput,
-				prometheus.GaugeValue, summary.Throughput, transaction.TransactionName)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionApdexScore, prometheus.GaugeValue, summary.ApdexScore, transaction.Name)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionApdexTarget, prometheus.GaugeValue, summary.ApdexTarget, transaction.Name)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionErrorRate, prometheus.GaugeValue, summary.ErrorRate, transaction.Name)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionResponseTime, prometheus.GaugeValue, summary.ResponseTime, transaction.Name)
+			ch <- prometheus.MustNewConstMetric(c.keyTransactionThroughput, prometheus.GaugeValue, summary.Throughput, transaction.Name)
 		} else {
-			log.Warnf("Ignoring key transaction '%s' because it is not reporting.", transaction.TransactionName)
+			log.Warnf("Ignoring key transaction '%s' because it is not reporting.", transaction.Name)
 		}
 	}
 }
