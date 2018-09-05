@@ -14,7 +14,7 @@ applications:
 ### Running
 
 ```console
-./newrelic_exporter --api-key=${NEWRELIC_API_KEY} --config=config.yml
+./newrelic_exporter --newrelic.api-key=${NEWRELIC_API_KEY} --config=config.yml
 ```
 
 Or with docker:
@@ -25,8 +25,9 @@ docker run -p 9112:9112 -v /path/to/my/config.yml:/config.yml -e "NEWRELIC_API_K
 
 ### Flags
 
-Name    | Description
---------|---------------------------------------------------------
-addr    | Address to bind the server (default `:9112`)
-api-key | Your New Relic API key (required)
-config  | Your configuration file path (default `config.yml`)
+Name               | Description
+-------------------|--------------------------------------------------------------------------
+web.listen-address | Address to listen on for web interface and telemetry (default `:9112`)
+web.telemetry-path | Path under which to expose metrics (default `/metrics`)
+newrelic.api-key   | Your New Relic API key (required)
+config             | Your configuration file path (default `config.yml`)
