@@ -37,7 +37,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, // nolint: gas
+		fmt.Fprintf(w, // nolint: gas, errcheck
 			`
 			<html>
 			<head><title>NewRelic Exporter</title></head>
