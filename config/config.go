@@ -22,7 +22,7 @@ type Application struct {
 func Parse(path string) Config {
 	var config Config
 
-	bts, err := ioutil.ReadFile(path)
+	bts, err := ioutil.ReadFile(path) // nolint: gosec
 	if err != nil {
 		log.With("path", path).Fatalf("Failed to read configuration file: %v", err)
 	}
