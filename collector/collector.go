@@ -91,7 +91,7 @@ func newKeyTransactionDesc(name string) *prometheus.Desc {
 	return prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "key_transaction", name),
 		"Key transaction last 10 minutes average for "+strings.Replace(name, "_", " ", -1),
-		[]string{"transaction"},
+		[]string{"name"},
 		nil,
 	)
 }
