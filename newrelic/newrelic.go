@@ -28,7 +28,11 @@ type Client struct {
 
 // NewClient returns an initialized NewRelic API client
 func NewClient(apiURL, apiKey string) *Client {
-	baseURL, _ := url.Parse(apiURL)
+	baseURL, err := url.Parse(apiURL)
+	if err != nil {
+		log.Fatalf("Failed to parse New Relic API URL: %v", err)
+	}
+
 	return &Client{
 		baseURL: baseURL,
 		client: &http.Client{
