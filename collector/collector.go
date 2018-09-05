@@ -133,7 +133,10 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
 
 	wg.Add(1)
-	go c.collectKeyTransactions(ch, &wg)
+	go func() {
+		defer wg.Done()
+		c.collectKeyTransactions(ch)
+	}()
 
 	for _, app := range c.config.Applications {
 		go func(app config.Application) {
@@ -187,9 +190,7 @@ func (c *newRelicCollector) collectInstanceSummary(ch chan<- prometheus.Metric,
 	}
 }
 
-func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric) {
 	log.Info("Collecting metrics from key transactions")
 	keyTransactions, err := c.client.ListKeyTransactions()
 	if err != nil {
