@@ -190,7 +190,7 @@ func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric, 
 	wg.Add(1)
 	defer wg.Done()
 
-	log.Infof("Collecting metrics from key transactions")
+	log.Info("Collecting metrics from key transactions")
 	keyTransactions, err := c.client.ListKeyTransactions()
 	if err != nil {
 		log.Errorf("Failed to get key transactions: %v", err)
