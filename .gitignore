@@ -7,3 +7,4 @@
 # Project specific
 vendor
 newrelic_exporter
+dist
