@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	version    = "dev"
-	addr       = kingpin.Flag("addr", "Address to bind the server").Default(":9112").OverrideDefaultFromEnvar("SERVER_ADDR").String()
-	apiKey     = kingpin.Flag("api-key", "New Relic API key").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
-	configFile = kingpin.Flag("config", "Configuration file path").Default("config.yml").OverrideDefaultFromEnvar("CONFIG_FILEPATH").String()
+	version       = "dev"
+	listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry").Default(":9112").String()
+	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+	apiKey        = kingpin.Flag("newrelic.api-key", "New Relic API key").OverrideDefaultFromEnvar("NEWRELIC_API_KEY").String()
+	configFile    = kingpin.Flag("config", "Configuration file path").Default("config.yml").OverrideDefaultFromEnvar("CONFIG_FILEPATH").String()
 )
 
 func main() {
@@ -33,7 +34,7 @@ func main() {
 	var config = config.Parse(*configFile)
 	prometheus.MustRegister(collector.NewNewRelicCollector(*apiKey, config))
 
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w,
 			`
@@ -41,14 +42,14 @@ func main() {
 			<head><title>NewRelic Exporter</title></head>
 			<body>
 				<h1>NewRelic Exporter</h1>
-				<p><a href="/metrics">Metrics</a></p>
+				<p><a href="`+*metricsPath+`">Metrics</a></p>
 			</body>
 			</html>
 			`)
 	})
 
-	log.Infof("Server listening on %s", *addr)
-	if err := http.ListenAndServe(*addr, nil); err != nil {
+	log.Infof("Server listening on %s", *listenAddress)
+	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}
 }
