@@ -206,7 +206,7 @@ func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric, 
 			ch <- prometheus.MustNewConstMetric(c.keyTransactionResponseTime, prometheus.GaugeValue, summary.ResponseTime, transaction.Name)
 			ch <- prometheus.MustNewConstMetric(c.keyTransactionThroughput, prometheus.GaugeValue, summary.Throughput, transaction.Name)
 		} else {
-			log.Warnf("Ignoring key transaction '%s' because it is not reporting.", transaction.Name)
+			log.Warnf("Ignoring key transaction '%s' because it's not reporting.", transaction.Name)
 		}
 	}
 }
