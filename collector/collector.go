@@ -132,6 +132,7 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 	// all goroutines below. Maybe consuming the simplest API endpoint
 	ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, 1)
 
+	wg.Add(1)
 	go c.collectKeyTransactions(ch, &wg)
 
 	for _, app := range c.config.Applications {
@@ -187,7 +188,6 @@ func (c *newRelicCollector) collectInstanceSummary(ch chan<- prometheus.Metric,
 }
 
 func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric, wg *sync.WaitGroup) {
-	wg.Add(1)
 	defer wg.Done()
 
 	log.Info("Collecting metrics from key transactions")
