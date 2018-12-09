@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/ContaAzul/newrelic_exporter/collector"
 	"net/http"
 
-	"github.com/ContaAzul/newrelic_exporter/collector"
-	"github.com/ContaAzul/newrelic_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"github.com/ContaAzul/newrelic_exporter/config"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

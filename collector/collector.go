@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ContaAzul/newrelic_exporter/config"
-	"github.com/ContaAzul/newrelic_exporter/newrelic"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
+	"github.com/ContaAzul/newrelic_exporter/config"
+	"github.com/ContaAzul/newrelic_exporter/newrelic"
 )
 
 const namespace = "newrelic"
