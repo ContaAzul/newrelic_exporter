@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	"github.com/ContaAzul/newrelic_exporter/config"
 	"github.com/ContaAzul/newrelic_exporter/newrelic"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/log"
 )
 
 const namespace = "newrelic"
@@ -33,6 +33,13 @@ type newRelicCollector struct {
 	keyTransactionErrorRate     *prometheus.Desc
 	keyTransactionResponseTime  *prometheus.Desc
 	keyTransactionThroughput    *prometheus.Desc
+	metricApdexScore            *prometheus.Desc
+	metricApdexSatisfied        *prometheus.Desc
+	metricApdexTolerating       *prometheus.Desc
+	metricApdexFrustrating      *prometheus.Desc
+	metricApdexCount            *prometheus.Desc
+	metricApdexThreshold        *prometheus.Desc
+	metricApdexThresholdMin     *prometheus.Desc
 }
 
 // NewNewRelicCollector returns a prometheus collector which exports
@@ -66,6 +73,13 @@ func NewNewRelicCollector(apiURL, apiKey string, config config.Config) prometheu
 		keyTransactionErrorRate:     newKeyTransactionDesc("error_rate"),
 		keyTransactionResponseTime:  newKeyTransactionDesc("response_time"),
 		keyTransactionThroughput:    newKeyTransactionDesc("throughput"),
+		metricApdexScore:            newMeticDesc("apdex_score"),
+		metricApdexSatisfied:        newMeticDesc("apdex_satisfied"),
+		metricApdexTolerating:       newMeticDesc("apdex_tolerating"),
+		metricApdexFrustrating:      newMeticDesc("apdex_frustrating"),
+		metricApdexCount:            newMeticDesc("apdex_count"),
+		metricApdexThreshold:        newMeticDesc("apdex_threshold"),
+		metricApdexThresholdMin:     newMeticDesc("apdex_threshold_min"),
 	}
 }
 
@@ -96,6 +110,15 @@ func newKeyTransactionDesc(name string) *prometheus.Desc {
 	)
 }
 
+func newMeticDesc(name string) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "metric_", name),
+		"Application rolling three-to-four-minute average for "+strings.Replace(name, "_", " ", -1),
+		[]string{"app", "name"},
+		nil,
+	)
+}
+
 // Describe describes all the metrics exported by the NewRelic exporter.
 // It implements prometheus.Collector.
 func (c *newRelicCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -114,6 +137,13 @@ func (c *newRelicCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.keyTransactionErrorRate
 	ch <- c.keyTransactionResponseTime
 	ch <- c.keyTransactionThroughput
+	ch <- c.metricApdexScore
+	ch <- c.metricApdexSatisfied
+	ch <- c.metricApdexTolerating
+	ch <- c.metricApdexFrustrating
+	ch <- c.metricApdexCount
+	ch <- c.metricApdexThreshold
+	ch <- c.metricApdexThresholdMin
 }
 
 // Collect fetches the metrics data from the NewRelic application and
@@ -148,6 +178,7 @@ func (c *newRelicCollector) Collect(ch chan<- prometheus.Metric) {
 				return
 			}
 			c.collectApplicationSummary(ch, app.Name, application)
+			c.collectMetricApdex(ch, app.Name, app.ID)
 
 			instances, err := c.client.ListInstances(app.ID)
 			if err != nil {
@@ -208,6 +239,36 @@ func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric) 
 			ch <- prometheus.MustNewConstMetric(c.keyTransactionThroughput, prometheus.GaugeValue, summary.Throughput, transaction.Name)
 		} else {
 			log.Warnf("Ignoring key transaction '%s' because it's not reporting.", transaction.Name)
+		}
+	}
+}
+
+func (c *newRelicCollector) collectMetricApdex(ch chan<- prometheus.Metric,
+	appName string, applicationId int64) {
+	log.Info("Collecting metrics from Apdex data")
+	apdexMetricNames, errNames := c.client.ListApdexMetricNames(applicationId)
+	if errNames != nil {
+		log.Errorf("Failed to get apdex metrics: %v", errNames)
+		return
+	}
+	apdexMetricData, errData := c.client.ListApdexMetricData(applicationId, apdexMetricNames)
+	if errData != nil {
+		log.Errorf("Failed to get apdex metrics: %#v", errData)
+		return
+	}
+
+	for _, apdexMetric := range apdexMetricData {
+		apdexValue := apdexMetric.ApdexValues[0].ApdexMetricValue // Since we summarize by one minute, will get only one apdexValue for each metric
+		if (newrelic.ApdexValue{}) != apdexValue {
+			ch <- prometheus.MustNewConstMetric(c.metricApdexScore, prometheus.GaugeValue, apdexValue.Score, appName, apdexMetric.Name)
+			ch <- prometheus.MustNewConstMetric(c.metricApdexSatisfied, prometheus.GaugeValue, float64(apdexValue.Satisfied), appName, apdexMetric.Name)
+			ch <- prometheus.MustNewConstMetric(c.metricApdexTolerating, prometheus.GaugeValue, float64(apdexValue.Tolerating), appName, apdexMetric.Name)
+			ch <- prometheus.MustNewConstMetric(c.metricApdexFrustrating, prometheus.GaugeValue, float64(apdexValue.Frustrating), appName, apdexMetric.Name)
+			ch <- prometheus.MustNewConstMetric(c.metricApdexCount, prometheus.GaugeValue, float64(apdexValue.Count), appName, apdexMetric.Name)
+			ch <- prometheus.MustNewConstMetric(c.metricApdexThreshold, prometheus.GaugeValue, apdexValue.Threshold, appName, apdexMetric.Name)
+			ch <- prometheus.MustNewConstMetric(c.metricApdexThresholdMin, prometheus.GaugeValue, apdexValue.ThresholdMin, appName, apdexMetric.Name)
+		} else {
+			log.Warnf("Ignoring apdex metric '%s' because it's not reporting.", apdexMetric.Name)
 		}
 	}
 }
