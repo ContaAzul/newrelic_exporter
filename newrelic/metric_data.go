@@ -38,24 +38,10 @@ type ApdexValue struct {
 // New Relic account. The time range for summary data is the last minute.
 // TODO: /metric endpoint takes about ~20 sec because of this. Make it faster. Maybe use separate threads for each call?
 func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricName) ([]ApdexMetric, error) {
-	now := time.Now()
-	minuteBeforeNow := now.Add(time.Duration(-1) * time.Minute)
 	names := ListApdexMetricNameValues(metricNames)
-
-	var paramsList []string
-	increment := 9
-	for i := 0; i < len(names); i += increment { // We'll take 9 names each time, to prevent going over 1024 https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string
-		// TODO: make this neat
-		var namesToAppendInParam []string
-		for k := i; k < i+increment; k += 1 {
-			if k < len(names) {
-				namesToAppendInParam = append(namesToAppendInParam, names[k])
-			}
-		}
-		paramsList = append(paramsList, ListParams(namesToAppendInParam, now, minuteBeforeNow))
-	}
-
+	paramsList := ListParams(names)
 	var apdexMetrics []ApdexMetric
+
 	for _, params := range paramsList {
 		apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
 		if err != nil {
@@ -68,20 +54,40 @@ func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricNa
 	return apdexMetrics, nil
 }
 
-func ListParams(names []string, now time.Time, minuteBeforeNow time.Time) string {
-	var paramString string
-	for _, name := range names {
-		paramString += fmt.Sprintf("names[]=%s&", url.PathEscape(name))
-	}
-	return fmt.Sprintf("%sfrom=%s&to=%s&summarize=true", paramString, minuteBeforeNow.Format(time.RFC3339), now.Format(time.RFC3339))
-}
-
 func ListApdexMetricNameValues(metricNames []MetricName) []string {
 	var arr []string
 	for _, metricName := range metricNames {
 		arr = append(arr, metricName.Name)
 	}
 	return arr
+}
+
+func ListParams(names []string) []string {
+	now := time.Now()
+	minuteBeforeNow := now.Add(time.Duration(-TimeSpan) * time.Minute)
+	increment := 9
+	var paramsList []string
+
+	for i := 0; i < len(names); i += increment { // We'll take 9 names each time, to prevent going over 1024 https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string
+		// TODO: make this neat
+		var namesToAppendInParam []string
+		for k := i; k < i+increment; k += 1 {
+			if k < len(names) {
+				namesToAppendInParam = append(namesToAppendInParam, names[k])
+			}
+		}
+		paramsList = append(paramsList, createParamsFor(namesToAppendInParam, now, minuteBeforeNow))
+	}
+	return paramsList
+}
+
+func createParamsFor(names []string, now time.Time, minuteBeforeNow time.Time) string {
+	var paramString string
+	for _, name := range names {
+		paramString += fmt.Sprintf("names[]=%s&", url.PathEscape(name))
+	}
+	timeFormat := time.RFC3339
+	return fmt.Sprintf("%sfrom=%s&to=%s&summarize=true", paramString, minuteBeforeNow.Format(timeFormat), now.Format(timeFormat))
 }
 
 func ListApdexMetricDataForParams(c *Client, applicationID int64, params string) ([]ApdexMetric, error) {

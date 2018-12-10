@@ -5,10 +5,11 @@ import (
 	"github.com/ContaAzul/newrelic_exporter/collector"
 	"net/http"
 
+	"github.com/ContaAzul/newrelic_exporter/config"
+	"github.com/ContaAzul/newrelic_exporter/newrelic"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
-	"github.com/ContaAzul/newrelic_exporter/config"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -35,6 +36,10 @@ func main() {
 
 	var config = config.Parse(*configFile)
 	prometheus.MustRegister(collector.NewNewRelicCollector(defaultBaseURL, *apiKey, config))
+
+	if config.TimeSpan > 0 {
+		newrelic.TimeSpan = config.TimeSpan
+	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

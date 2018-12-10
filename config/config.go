@@ -10,6 +10,7 @@ import (
 // Config represents the exporter configuration
 type Config struct {
 	Applications []Application `yaml:"applications,omitempty"`
+	TimeSpan     int           `yaml:"timespan"`
 }
 
 // Application represents a NewRelic application scrape configuration
