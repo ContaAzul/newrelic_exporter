@@ -21,7 +21,7 @@ applications:
 Or with docker:
 
 ```console
-docker run -p 9112:9112 -v /path/to/my/config.yml:/config.yml -e "NEWRELIC_API_KEY=${NEWRELIC_API_KEY}" caninjas/newrelic_exporter
+docker run -p 9112:9112 -v /path/to/my/config.yml:/config.yml -e "NEWRELIC_API_KEY=${NEWRELIC_API_KEY}" willlie1/newrelic_exporter
 ```
 
 ### Flags
