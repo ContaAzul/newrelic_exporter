@@ -6,6 +6,7 @@ Exports New Relic applications metrics data as prometheus metrics.
 
 You must add New Relic applications that you want to export metrics in the `config.yml` file:
 ```yaml
+timespan: 1 # timespan the summary of apdexmetrics will be retrieved (last x minutes)
 applications:
   - id: 31584797            #New Relic application ID
     name: My Application    #New Relic application name
