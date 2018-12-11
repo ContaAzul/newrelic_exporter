@@ -36,23 +36,34 @@ type ApdexValue struct {
 
 // ListApdexMetricData returns a paginated list of the key transactions associated with your
 // New Relic account. The time range for summary data is the last minute.
-// TODO: /metric endpoint takes about ~20 sec because of this. Make it faster. Maybe use separate threads for each call?
-// TODO: maybe Crawl https://tour.golang.org/concurrency/10?
 func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricName) ([]ApdexMetric, error) {
 	names := ListApdexMetricNameValues(metricNames)
 	paramsList := ListParams(names)
 	var apdexMetrics []ApdexMetric
 
+	ch := make(chan []ApdexMetric, len(names))
 	for _, params := range paramsList {
-		apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
-		if err != nil {
-			log.Warnf("Warning some metrics were not retrieved because of error", err, params)
-		}
-		for _, apdexMetricByParams := range apdexMetricsByParams {
-			apdexMetrics = append(apdexMetrics, apdexMetricByParams)
+		go func(c *Client, applicationID int64, params string) {
+			apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
+			if err != nil {
+				log.Warnf("Warning some metrics were not retrieved because of error", err, params)
+			}
+			ch <- apdexMetricsByParams
+		}(c, applicationID, params)
+	}
+
+	for {
+		select {
+		case apdexMetricsByParams := <-ch:
+			for _, apdexMetricByParams := range apdexMetricsByParams {
+				apdexMetrics = append(apdexMetrics, apdexMetricByParams)
+			}
+			if len(apdexMetrics) == len(names) {
+				log.Info("Retrieved ", len(apdexMetrics), " metrics")
+				return apdexMetrics, nil
+			}
 		}
 	}
-	return apdexMetrics, nil
 }
 
 func ListApdexMetricNameValues(metricNames []MetricName) []string {
