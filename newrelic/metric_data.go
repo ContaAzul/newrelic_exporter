@@ -45,8 +45,11 @@ func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricNa
 	for _, params := range paramsList {
 		go func(c *Client, applicationID int64, params string) {
 			apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
-			if err != nil {
-				log.Warnf("Warning some metrics were not retrieved because of error", err, params)
+			if err != nil { // if failed retry
+				apdexMetricsByParams, err = ListApdexMetricDataForParams(c, applicationID, params)
+			}
+			if err != nil { // if failed again log error
+				log.Errorf("Warning some metrics were not retrieved because of error", err, params)
 			}
 			ch <- apdexMetricsByParams
 		}(c, applicationID, params)
@@ -55,8 +58,8 @@ func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricNa
 	for {
 		select {
 		case apdexMetricsByParams := <-ch:
-			for _, apdexMetricByParams := range apdexMetricsByParams {
-				apdexMetrics = append(apdexMetrics, apdexMetricByParams)
+			if apdexMetricsByParams == nil {
+				return nil, errors.New("could not retrieve metric data")
 			}
 			if len(apdexMetrics) == len(names) {
 				log.Info("Retrieved ", len(apdexMetrics), " metrics")
