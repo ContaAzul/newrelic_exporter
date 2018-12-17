@@ -1,6 +1,7 @@
 package newrelic
 
 import (
+	"errors"
 	"fmt"
 	"github.com/prometheus/common/log"
 	"net/url"
@@ -36,7 +37,7 @@ type ApdexValue struct {
 
 // ListApdexMetricData returns a paginated list of the key transactions associated with your
 // New Relic account. The time range for summary data is the last minute.
-func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricName) ([]ApdexMetric, error) {
+func (c *Client) ListApdexMetricData(applicationId int64, metricNames []MetricName) ([]ApdexMetric, error) {
 	names := ListApdexMetricNameValues(metricNames)
 	paramsList := ListParams(names)
 	var apdexMetrics []ApdexMetric
@@ -44,6 +45,7 @@ func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricNa
 	ch := make(chan []ApdexMetric, len(names))
 	for _, params := range paramsList {
 		go func(c *Client, applicationID int64, params string) {
+			log.Debugf("Retrieving %d metrics for application with id '%d' with params %s", len(apdexMetrics), applicationId, params)
 			apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
 			if err != nil { // if failed retry
 				apdexMetricsByParams, err = ListApdexMetricDataForParams(c, applicationID, params)
@@ -52,7 +54,7 @@ func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricNa
 				log.Errorf("Warning some metrics were not retrieved because of error", err, params)
 			}
 			ch <- apdexMetricsByParams
-		}(c, applicationID, params)
+		}(c, applicationId, params)
 	}
 
 	for {
@@ -61,8 +63,9 @@ func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricNa
 			if apdexMetricsByParams == nil {
 				return nil, errors.New("could not retrieve metric data")
 			}
+			apdexMetrics = append(apdexMetrics, apdexMetricsByParams...)
 			if len(apdexMetrics) == len(names) {
-				log.Info("Retrieved ", len(apdexMetrics), " metrics")
+				log.Debugf("Retrieved %d metrics for application with id '%d'", len(apdexMetrics), applicationId)
 				return apdexMetrics, nil
 			}
 		}
@@ -106,7 +109,7 @@ func createParamsFor(names []string, now time.Time, minuteBeforeNow time.Time) s
 }
 
 func ListApdexMetricDataForParams(c *Client, applicationID int64, params string) ([]ApdexMetric, error) {
-	log.Info("Getting apdex Metrics with params: ", params)
+	log.Debug("Getting apdex Metrics with params: ", params)
 	path := fmt.Sprintf("v2/applications/%d/metrics/data.json?%s", applicationID, params)
 	req, err := c.newRequest("GET", path)
 	if err != nil {
