@@ -1,10 +1,10 @@
 package newrelic
 
 import (
-	"errors"
 	"fmt"
 	"github.com/prometheus/common/log"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -37,39 +37,45 @@ type ApdexValue struct {
 
 // ListApdexMetricData returns a paginated list of the key transactions associated with your
 // New Relic account. The time range for summary data is the last minute.
-func (c *Client) ListApdexMetricData(applicationId int64, metricNames []MetricName) ([]ApdexMetric, error) {
+func (c *Client) ListApdexMetricData(applicationId int64, metricNames []MetricName) []ApdexMetric {
 	names := ListApdexMetricNameValues(metricNames)
 	paramsList := ListParams(names)
 	var apdexMetrics []ApdexMetric
 
+	var wg sync.WaitGroup
+	wg.Add(len(paramsList))
+
 	ch := make(chan []ApdexMetric, len(names))
 	for _, params := range paramsList {
-		go func(c *Client, applicationID int64, params string) {
-			log.Debugf("Retrieving %d metrics for application with id '%d' with params %s", len(apdexMetrics), applicationId, params)
-			apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
-			if err != nil { // if failed retry
-				apdexMetricsByParams, err = ListApdexMetricDataForParams(c, applicationID, params)
-			}
-			if err != nil { // if failed again log error
-				log.Errorf("Warning some metrics were not retrieved because of error", err, params)
-			}
-			ch <- apdexMetricsByParams
-		}(c, applicationId, params)
+		go c.retrieveMetrics(apdexMetrics, applicationId, ch, params)
 	}
-
-	for {
-		select {
-		case apdexMetricsByParams := <-ch:
+	go func() {
+		for apdexMetricsByParams := range ch {
 			if apdexMetricsByParams == nil {
-				return nil, errors.New("could not retrieve metric data")
+				log.Info("Could not retrieve metric data, with applicationId %d", applicationId)
+				wg.Done()
+				continue
 			}
 			apdexMetrics = append(apdexMetrics, apdexMetricsByParams...)
-			if len(apdexMetrics) == len(names) {
-				log.Debugf("Retrieved %d metrics for application with id '%d'", len(apdexMetrics), applicationId)
-				return apdexMetrics, nil
-			}
+			wg.Done()
 		}
+	}()
+
+	wg.Wait()
+	close(ch)
+	return apdexMetrics
+}
+
+func (c *Client) retrieveMetrics(apdexMetrics []ApdexMetric, applicationId int64, ch chan []ApdexMetric, params string) {
+	log.Debugf("Retrieving %d metrics for application with id '%d' with params %s", len(apdexMetrics), applicationId, params)
+	apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationId, params)
+	if err != nil { // if failed retry
+		apdexMetricsByParams, err = ListApdexMetricDataForParams(c, applicationId, params)
 	}
+	if err != nil { // if failed again log error
+		log.Errorf("Warning some metrics were not retrieved because of error", err, params)
+	}
+	ch <- apdexMetricsByParams
 }
 
 func ListApdexMetricNameValues(metricNames []MetricName) []string {
@@ -111,7 +117,9 @@ func createParamsFor(names []string, now time.Time, minuteBeforeNow time.Time) s
 func ListApdexMetricDataForParams(c *Client, applicationID int64, params string) ([]ApdexMetric, error) {
 	log.Debug("Getting apdex Metrics with params: ", params)
 	path := fmt.Sprintf("v2/applications/%d/metrics/data.json?%s", applicationID, params)
+	log.Debug("Retrieving data from path: %s", path)
 	req, err := c.newRequest("GET", path)
+	log.Debug("Request received: %s", req)
 	if err != nil {
 		return nil, err
 	}

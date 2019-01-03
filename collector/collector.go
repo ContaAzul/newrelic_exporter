@@ -251,11 +251,7 @@ func (c *newRelicCollector) collectMetricApdex(ch chan<- prometheus.Metric,
 		log.Errorf("Failed to get apdex metrics: %v", errNames)
 		return
 	}
-	apdexMetricData, errData := c.client.ListApdexMetricData(applicationId, apdexMetricNames)
-	if errData != nil {
-		log.Errorf("Failed to get apdex metrics: %#v", errData)
-		return
-	}
+	apdexMetricData := c.client.ListApdexMetricData(applicationId, apdexMetricNames)
 	log.Infof("Retrieved %d metrics for application '%s' with id '%d'", len(apdexMetricData), appName, applicationId)
 	for _, apdexMetric := range apdexMetricData {
 		apdexValue := apdexMetric.ApdexValues[0].ApdexMetricValue // Since we summarize by one minute, will get only one apdexValue for each metric
