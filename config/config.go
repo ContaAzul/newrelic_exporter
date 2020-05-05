@@ -10,6 +10,8 @@ import (
 // Config represents the exporter configuration
 type Config struct {
 	Applications []Application `yaml:"applications,omitempty"`
+	TimeSpan     int           `yaml:"timespan"`
+	LogLevel     string        `yaml:"loglevel"`
 }
 
 // Application represents a NewRelic application scrape configuration
@@ -28,6 +30,9 @@ func Parse(path string) Config {
 	}
 	if err := yaml.Unmarshal(bts, &config); err != nil {
 		log.With("path", path).Fatalf("Failed to unmarshall configuration file: %v", err)
+	}
+	if len(config.LogLevel) == 0 {
+		config.LogLevel = "INFO" // set default to "INFO"
 	}
 
 	return config

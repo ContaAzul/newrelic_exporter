@@ -245,18 +245,14 @@ func (c *newRelicCollector) collectKeyTransactions(ch chan<- prometheus.Metric) 
 
 func (c *newRelicCollector) collectMetricApdex(ch chan<- prometheus.Metric,
 	appName string, applicationId int64) {
-	log.Info("Collecting metrics from Apdex data")
+	log.Infof("Collecting metrics from Apdex data for application '%s' with id '%d'", appName, applicationId)
 	apdexMetricNames, errNames := c.client.ListApdexMetricNames(applicationId)
 	if errNames != nil {
 		log.Errorf("Failed to get apdex metrics: %v", errNames)
 		return
 	}
-	apdexMetricData, errData := c.client.ListApdexMetricData(applicationId, apdexMetricNames)
-	if errData != nil {
-		log.Errorf("Failed to get apdex metrics: %#v", errData)
-		return
-	}
-
+	apdexMetricData := c.client.ListApdexMetricData(applicationId, apdexMetricNames)
+	log.Infof("Retrieved %d metrics for application '%s' with id '%d'", len(apdexMetricData), appName, applicationId)
 	for _, apdexMetric := range apdexMetricData {
 		apdexValue := apdexMetric.ApdexValues[0].ApdexMetricValue // Since we summarize by one minute, will get only one apdexValue for each metric
 		if (newrelic.ApdexValue{}) != apdexValue {
@@ -267,7 +263,7 @@ func (c *newRelicCollector) collectMetricApdex(ch chan<- prometheus.Metric,
 			ch <- prometheus.MustNewConstMetric(c.metricApdexCount, prometheus.GaugeValue, float64(apdexValue.Count), appName, apdexMetric.Name)
 			ch <- prometheus.MustNewConstMetric(c.metricApdexThreshold, prometheus.GaugeValue, apdexValue.Threshold, appName, apdexMetric.Name)
 			ch <- prometheus.MustNewConstMetric(c.metricApdexThresholdMin, prometheus.GaugeValue, apdexValue.ThresholdMin, appName, apdexMetric.Name)
-		} else {
+		} else if !strings.HasPrefix(apdexMetric.Name, "Supportability") { // Searching metrics on "Apdex" will return a supportability metric which we want to ignore
 			log.Warnf("Ignoring apdex metric '%s' because it's not reporting.", apdexMetric.Name)
 		}
 	}

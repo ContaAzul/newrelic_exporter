@@ -5,10 +5,11 @@ import (
 	"github.com/ContaAzul/newrelic_exporter/collector"
 	"net/http"
 
+	"github.com/ContaAzul/newrelic_exporter/config"
+	"github.com/ContaAzul/newrelic_exporter/newrelic"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
-	"github.com/ContaAzul/newrelic_exporter/config"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -27,14 +28,23 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	var config = config.Parse(*configFile)
+	log.AddFlags(kingpin.CommandLine)
+	_, err := kingpin.CommandLine.Parse([]string{"--log.level", config.LogLevel})
+	if err != nil {
+		log.Fatal("Failed to set log level property", err)
+	}
 	log.Info("Starting newrelic_exporter ", version)
 
 	if *apiKey == "" {
 		log.Fatal("You must provide your New Relic API key")
 	}
 
-	var config = config.Parse(*configFile)
 	prometheus.MustRegister(collector.NewNewRelicCollector(defaultBaseURL, *apiKey, config))
+
+	if config.TimeSpan > 0 {
+		newrelic.TimeSpan = config.TimeSpan
+	}
 
 	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

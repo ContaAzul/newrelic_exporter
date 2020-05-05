@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/prometheus/common/log"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -36,44 +37,45 @@ type ApdexValue struct {
 
 // ListApdexMetricData returns a paginated list of the key transactions associated with your
 // New Relic account. The time range for summary data is the last minute.
-// TODO: /metric endpoint takes about ~20 sec because of this. Make it faster. Maybe use separate threads for each call?
-func (c *Client) ListApdexMetricData(applicationID int64, metricNames []MetricName) ([]ApdexMetric, error) {
-	now := time.Now()
-	minuteBeforeNow := now.Add(time.Duration(-1) * time.Minute)
+func (c *Client) ListApdexMetricData(applicationId int64, metricNames []MetricName) []ApdexMetric {
 	names := ListApdexMetricNameValues(metricNames)
-
-	var paramsList []string
-	increment := 9
-	for i := 0; i < len(names); i += increment { // We'll take 9 names each time, to prevent going over 1024 https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string
-		// TODO: make this neat
-		var namesToAppendInParam []string
-		for k := i; k < i+increment; k += 1 {
-			if k < len(names) {
-				namesToAppendInParam = append(namesToAppendInParam, names[k])
-			}
-		}
-		paramsList = append(paramsList, ListParams(namesToAppendInParam, now, minuteBeforeNow))
-	}
-
+	paramsList := ListParams(names)
 	var apdexMetrics []ApdexMetric
+
+	var wg sync.WaitGroup
+	wg.Add(len(paramsList))
+
+	ch := make(chan []ApdexMetric, len(names))
 	for _, params := range paramsList {
-		apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationID, params)
-		if err != nil {
-			log.Warnf("Warning some metrics were not retrieved because of error", err, params)
-		}
-		for _, apdexMetricByParams := range apdexMetricsByParams {
-			apdexMetrics = append(apdexMetrics, apdexMetricByParams)
-		}
+		go c.retrieveMetrics(apdexMetrics, applicationId, ch, params)
 	}
-	return apdexMetrics, nil
+	go func() {
+		for apdexMetricsByParams := range ch {
+			if apdexMetricsByParams == nil {
+				log.Info("Could not retrieve metric data, with applicationId %d", applicationId)
+				wg.Done()
+				continue
+			}
+			apdexMetrics = append(apdexMetrics, apdexMetricsByParams...)
+			wg.Done()
+		}
+	}()
+
+	wg.Wait()
+	close(ch)
+	return apdexMetrics
 }
 
-func ListParams(names []string, now time.Time, minuteBeforeNow time.Time) string {
-	var paramString string
-	for _, name := range names {
-		paramString += fmt.Sprintf("names[]=%s&", url.PathEscape(name))
+func (c *Client) retrieveMetrics(apdexMetrics []ApdexMetric, applicationId int64, ch chan []ApdexMetric, params string) {
+	log.Debugf("Retrieving %d metrics for application with id '%d' with params %s", len(apdexMetrics), applicationId, params)
+	apdexMetricsByParams, err := ListApdexMetricDataForParams(c, applicationId, params)
+	if err != nil { // if failed retry
+		apdexMetricsByParams, err = ListApdexMetricDataForParams(c, applicationId, params)
 	}
-	return fmt.Sprintf("%sfrom=%s&to=%s&summarize=true", paramString, minuteBeforeNow.Format(time.RFC3339), now.Format(time.RFC3339))
+	if err != nil { // if failed again log error
+		log.Errorf("Warning some metrics were not retrieved because of error", err, params)
+	}
+	ch <- apdexMetricsByParams
 }
 
 func ListApdexMetricNameValues(metricNames []MetricName) []string {
@@ -84,10 +86,40 @@ func ListApdexMetricNameValues(metricNames []MetricName) []string {
 	return arr
 }
 
+func ListParams(names []string) []string {
+	now := time.Now()
+	minuteBeforeNow := now.Add(time.Duration(-TimeSpan) * time.Minute)
+	increment := 9
+	var paramsList []string
+
+	for i := 0; i < len(names); i += increment { // We'll take 9 names each time, to prevent going over 1024 https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string
+		// TODO: make this neat
+		var namesToAppendInParam []string
+		for k := i; k < i+increment; k += 1 {
+			if k < len(names) {
+				namesToAppendInParam = append(namesToAppendInParam, names[k])
+			}
+		}
+		paramsList = append(paramsList, createParamsFor(namesToAppendInParam, now, minuteBeforeNow))
+	}
+	return paramsList
+}
+
+func createParamsFor(names []string, now time.Time, minuteBeforeNow time.Time) string {
+	var paramString string
+	for _, name := range names {
+		paramString += fmt.Sprintf("names[]=%s&", url.PathEscape(name))
+	}
+	timeFormat := time.RFC3339
+	return fmt.Sprintf("%sfrom=%s&to=%s&summarize=true", paramString, minuteBeforeNow.Format(timeFormat), now.Format(timeFormat))
+}
+
 func ListApdexMetricDataForParams(c *Client, applicationID int64, params string) ([]ApdexMetric, error) {
-	log.Info("Getting apdex Metrics with params: ", params)
+	log.Debug("Getting apdex Metrics with params: ", params)
 	path := fmt.Sprintf("v2/applications/%d/metrics/data.json?%s", applicationID, params)
+	log.Debug("Retrieving data from path: %s", path)
 	req, err := c.newRequest("GET", path)
+	log.Debug("Request received: %s", req)
 	if err != nil {
 		return nil, err
 	}

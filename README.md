@@ -6,6 +6,8 @@ Exports New Relic applications metrics data as prometheus metrics.
 
 You must add New Relic applications that you want to export metrics in the `config.yml` file:
 ```yaml
+loglevel: INFO # (optional) set log level default INFO
+timespan: 1 # (optional) timespan the summary of apdexmetrics will be retrieved (last x minutes) default 1
 applications:
   - id: 31584797            #New Relic application ID
     name: My Application    #New Relic application name
@@ -20,7 +22,7 @@ applications:
 Or with docker:
 
 ```console
-docker run -p 9112:9112 -v /path/to/my/config.yml:/config.yml -e "NEWRELIC_API_KEY=${NEWRELIC_API_KEY}" caninjas/newrelic_exporter
+docker run -p 9112:9112 -v /path/to/my/config.yml:/config.yml -e "NEWRELIC_API_KEY=${NEWRELIC_API_KEY}" willlie1/newrelic_exporter
 ```
 
 ### Flags
