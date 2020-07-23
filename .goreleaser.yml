@@ -13,16 +13,15 @@ builds:
   - CGO_ENABLED=0
 checksum:
   name_template: '{{ .ProjectName }}_checksums.txt'
-archive:
+archives:
   name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}'
 changelog:
   filters:
     exclude:
     - '^Merge (remote|branch|pull)'
 dockers:
-- image: caninjas/newrelic_exporter
-  tag_templates:
-  - '{{ .Tag }}'
-  - 'v{{ .Major }}'
-  - 'v{{ .Major }}.{{ .Minor }}'
-  - latest
+- image_templates:
+  - 'caninjas/newrelic_exporter:{{ .Tag }}'
+  - 'caninjas/newrelic_exporter:v{{ .Major }}'
+  - 'caninjas/newrelic_exporter:v{{ .Major }}.{{ .Minor }}'
+  - 'caninjas/newrelic_exporter:latest'
