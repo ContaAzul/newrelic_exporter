@@ -1,7 +1,5 @@
 # newrelic_exporter
 
-![Build Status](https://travis-ci.org/ContaAzul/newrelic_exporter.svg?branch=master&status=passed)
-
 Exports New Relic applications metrics data as prometheus metrics.
 
 ### Configuration
