@@ -22,6 +22,6 @@ changelog:
 dockers:
 - image_templates:
   - 'caninjas/newrelic_exporter:{{ .Tag }}'
-  - 'caninjas/newrelic_exporter:v{{ .Major }}'
-  - 'caninjas/newrelic_exporter:v{{ .Major }}.{{ .Minor }}'
-  - 'caninjas/newrelic_exporter:latest'
+  - '439291037095.dkr.ecr.us-east-2.amazonaws.com/base/newrelic_exporter:v{{ .Major }}'
+  - '439291037095.dkr.ecr.us-east-2.amazonaws.com/base/newrelic_exporter:v{{ .Major }}.{{ .Minor }}'
+  - '439291037095.dkr.ecr.us-east-2.amazonaws.com/base/newrelic_exporter:latest'
