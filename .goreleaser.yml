@@ -21,7 +21,7 @@ changelog:
     - '^Merge (remote|branch|pull)'
 dockers:
 - image_templates:
-  - 'caninjas/newrelic_exporter:{{ .Tag }}'
+  - '439291037095.dkr.ecr.us-east-2.amazonaws.com/microservice/newrelic_exporter:{{ .Tag }}'
   - '439291037095.dkr.ecr.us-east-2.amazonaws.com/microservice/newrelic_exporter:v{{ .Major }}'
   - '439291037095.dkr.ecr.us-east-2.amazonaws.com/microservice/newrelic_exporter:v{{ .Major }}.{{ .Minor }}'
   - '439291037095.dkr.ecr.us-east-2.amazonaws.com/microservice/newrelic_exporter:latest'
